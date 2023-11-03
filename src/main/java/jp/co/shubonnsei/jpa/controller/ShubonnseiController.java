@@ -12,12 +12,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import jp.co.sbsssmcrud.ppog.utils.Messages;
-import jp.co.sbsssmcrud.ppog.utils.Pagination;
-import jp.co.sbsssmcrud.ppog.utils.RestMsg;
-import jp.co.sbsssmcrud.ppog.utils.StringUtils;
 import jp.co.shubonnsei.jpa.dto.CityDto;
-import jp.co.shubonnsei.jpa.service.SbsSsmcrudLogicService;
+import jp.co.shubonnsei.jpa.service.ShubonnseiJpaLogicService;
+import jp.co.shubonnsei.jpa.utils.Messages;
+import jp.co.shubonnsei.jpa.utils.Pagination;
+import jp.co.shubonnsei.jpa.utils.RestMsg;
+import jp.co.shubonnsei.jpa.utils.StringUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 
@@ -28,14 +28,14 @@ import lombok.RequiredArgsConstructor;
  * @since 1.00
  */
 @RestController
-@RequestMapping("/public/ssmcrud")
+@RequestMapping("/public/shubonnsei")
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-public class SbsSsmcrudController {
+public class ShubonnseiController {
 
 	/**
 	 * 中央処理サービスインターフェス
 	 */
-	private final SbsSsmcrudLogicService sbsSsmcrudLogicService;
+	private final ShubonnseiJpaLogicService sbsSsmcrudLogicService;
 
 	/**
 	 * 入力した都市名を重複かどうかをチェックする

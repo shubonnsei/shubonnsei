@@ -2,8 +2,8 @@ package jp.co.shubonnsei.jpa.service;
 
 import java.util.List;
 
-import jp.co.sbsssmcrud.ppog.utils.Pagination;
 import jp.co.shubonnsei.jpa.dto.CityDto;
+import jp.co.shubonnsei.jpa.utils.Pagination;
 
 /**
  * 中央処理サービスインターフェス
@@ -11,7 +11,7 @@ import jp.co.shubonnsei.jpa.dto.CityDto;
  * @author shubonnsei
  * @since 1.00
  */
-public interface SbsSsmcrudLogicService {
+public interface ShubonnseiJpaLogicService {
 
 	/**
 	 * 入力した都市名の重複するかどうかを検証する

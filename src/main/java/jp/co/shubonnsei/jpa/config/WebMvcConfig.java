@@ -9,7 +9,7 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport;
 
-import jp.co.sbsssmcrud.ppog.utils.Messages;
+import jp.co.shubonnsei.jpa.utils.Messages;
 import lombok.extern.log4j.Log4j2;
 
 /**

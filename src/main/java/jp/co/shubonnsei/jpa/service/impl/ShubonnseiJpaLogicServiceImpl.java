@@ -2,24 +2,17 @@ package jp.co.shubonnsei.jpa.service.impl;
 
 import java.util.List;
 
-import org.postgresql.util.PSQLException;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.google.common.collect.Lists;
 
-import jp.co.sbsssmcrud.ppog.dto.CityDto;
-import jp.co.sbsssmcrud.ppog.entity.City;
-import jp.co.sbsssmcrud.ppog.entity.CityInfo;
-import jp.co.sbsssmcrud.ppog.mapper.CityInfoMapper;
-import jp.co.sbsssmcrud.ppog.mapper.CityMapper;
-import jp.co.sbsssmcrud.ppog.mapper.CountryMapper;
-import jp.co.sbsssmcrud.ppog.mapper.LanguageMapper;
-import jp.co.sbsssmcrud.ppog.service.SbsSsmcrudLogicService;
-import jp.co.sbsssmcrud.ppog.utils.Messages;
-import jp.co.sbsssmcrud.ppog.utils.Pagination;
-import jp.co.sbsssmcrud.ppog.utils.StringUtils;
+import jp.co.shubonnsei.jpa.dto.CityDto;
+import jp.co.shubonnsei.jpa.entity.City;
+import jp.co.shubonnsei.jpa.entity.CityInfo;
+import jp.co.shubonnsei.jpa.service.ShubonnseiJpaLogicService;
+import jp.co.shubonnsei.jpa.utils.Messages;
+import jp.co.shubonnsei.jpa.utils.Pagination;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 
@@ -30,9 +23,8 @@ import lombok.RequiredArgsConstructor;
  * @since 1.00
  */
 @Service
-@Transactional(rollbackFor = PSQLException.class)
-@RequiredArgsConstructor(access = AccessLevel.PROTECTED)
-public class SbsSsmcrudLogicServiceImpl implements SbsSsmcrudLogicService {
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
+public class ShubonnseiJpaLogicServiceImpl implements ShubonnseiJpaLogicService {
 
 	/**
 	 * ページングナビゲーションのページ数
