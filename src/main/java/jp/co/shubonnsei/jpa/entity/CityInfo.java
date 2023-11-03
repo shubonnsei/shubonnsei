@@ -2,51 +2,66 @@ package jp.co.shubonnsei.jpa.entity;
 
 import java.io.Serializable;
 
-import lombok.Data;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * 都市情報マテリアライズドビューのエンティティ
  *
  * @author shubonnsei
- * @since 2.68
+ * @since 1.00
  */
-@Data
+@Entity
+@Getter
+@Setter
+@NoArgsConstructor
+@Table(name = "city_info")
 public final class CityInfo implements Serializable {
 
-	private static final long serialVersionUID = 3849030013295718968L;
-
 	/**
-	 * This field corresponds to the database column ID
+	 * 都市ID
 	 */
+	@Id
 	private Integer id;
 
 	/**
-	 * This field corresponds to the database column NAME
+	 * 都市名
 	 */
+	@Column(nullable = false)
 	private String name;
 
 	/**
-	 * This field corresponds to the database column CONTINENT
+	 * 大陸
 	 */
+	@Column(nullable = false)
 	private String continent;
 
 	/**
-	 * This field corresponds to the database column NATION
+	 * 国家
 	 */
+	@Column(nullable = false)
 	private String nation;
 
 	/**
-	 * This field corresponds to the database column DISTRICT
+	 * 地域
 	 */
+	@Column(nullable = false)
 	private String district;
 
 	/**
-	 * This field corresponds to the database column POPULATION
+	 * 人口
 	 */
+	@Column(nullable = false)
 	private Integer population;
 
 	/**
-	 * This field corresponds to the database column LANGUAGE
+	 * 公用語
 	 */
+	@Column(nullable = false)
 	private String language;
 }

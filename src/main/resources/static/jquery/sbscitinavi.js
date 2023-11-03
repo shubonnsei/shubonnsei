@@ -1,4 +1,4 @@
-const pathdeApp = "ssmcrud";
+const pathdeApp = "shubonnsei";
 let currentPage = 1;
 let totalRecord, totalPages, searchName;
 
