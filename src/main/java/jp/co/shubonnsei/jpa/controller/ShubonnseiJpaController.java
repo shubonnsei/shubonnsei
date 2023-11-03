@@ -30,7 +30,7 @@ import lombok.RequiredArgsConstructor;
 @RestController
 @RequestMapping("/public/shubonnsei")
 @RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-public class ShubonnseiController {
+public class ShubonnseiJpaController {
 
 	/**
 	 * 中央処理サービスインターフェス

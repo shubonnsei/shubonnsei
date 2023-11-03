@@ -2,7 +2,13 @@ package jp.co.shubonnsei.jpa.service.impl;
 
 import java.util.List;
 
-import org.springframework.beans.BeanUtils;
+import org.springframework.data.domain.Example;
+import org.springframework.data.domain.ExampleMatcher;
+import org.springframework.data.domain.ExampleMatcher.GenericPropertyMatchers;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Direction;
 import org.springframework.stereotype.Service;
 
 import com.google.common.collect.Lists;
@@ -10,9 +16,13 @@ import com.google.common.collect.Lists;
 import jp.co.shubonnsei.jpa.dto.CityDto;
 import jp.co.shubonnsei.jpa.entity.City;
 import jp.co.shubonnsei.jpa.entity.CityInfo;
+import jp.co.shubonnsei.jpa.repository.CityInfoRepository;
+import jp.co.shubonnsei.jpa.repository.CityRepository;
+import jp.co.shubonnsei.jpa.repository.CountryRepository;
 import jp.co.shubonnsei.jpa.service.ShubonnseiJpaLogicService;
 import jp.co.shubonnsei.jpa.utils.Messages;
 import jp.co.shubonnsei.jpa.utils.Pagination;
+import jp.co.shubonnsei.jpa.utils.StringUtils;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 
@@ -27,11 +37,6 @@ import lombok.RequiredArgsConstructor;
 public class ShubonnseiJpaLogicServiceImpl implements ShubonnseiJpaLogicService {
 
 	/**
-	 * ページングナビゲーションのページ数
-	 */
-	private static final Integer NAVIGATION_PAGES = 5;
-
-	/**
 	 * ページサイズ
 	 */
 	private static final Integer PAGE_SIZE = 8;
@@ -42,71 +47,71 @@ public class ShubonnseiJpaLogicServiceImpl implements ShubonnseiJpaLogicService 
 	private static final Integer SORT_NUMBER = 100;
 
 	/**
-	 * 都市マッパー
+	 * 都市リポジトリ
 	 */
-	private final CityMapper cityMapper;
+	private final CityRepository cityRepository;
 
 	/**
-	 * 都市情報マッパー
+	 * 都市情報リポジトリ
 	 */
-	private final CityInfoMapper cityInfoMapper;
+	private final CityInfoRepository cityInfoRepository;
 
 	/**
-	 * 国家マッパー
+	 * 国家リポジトリ
 	 */
-	private final CountryMapper countryMapper;
-
-	/**
-	 * 言語マッパー
-	 */
-	private final LanguageMapper languageMapper;
+	private final CountryRepository countryRepository;
 
 	@Override
 	public Integer checkDuplicate(final String cityName) {
-		return this.cityMapper.checkDuplicatedName(cityName);
+		final City city = new City();
+		city.setName(StringUtils.toHankaku(cityName));
+		city.setDeleteFlg(Messages.MSG007);
+		final Example<City> example = Example.of(city, ExampleMatcher.matchingAll());
+		return this.cityRepository.findAll(example).size();
 	}
 
 	@Override
 	public List<String> findAllContinents() {
-		return this.countryMapper.findAllContinents();
+		return this.countryRepository.findAllContinents();
 	}
 
 	@Override
 	public String findLanguageByCty(final String nationVal) {
-		final String nationCode = this.countryMapper.findNationCode(StringUtils.toHankaku(nationVal));
-		return this.languageMapper.getOfficialLanguageByCountryCode(nationCode);
+		return this.cityInfoRepository.getLanguage(nationVal);
 	}
 
 	@Override
 	public List<String> findNationsByCnt(final String continentVal) {
 		if (StringUtils.isDigital(continentVal)) {
 			final Integer id = Integer.parseInt(continentVal);
-			final List<String> list = Lists.newArrayList();
-			final CityInfo cityInfo = this.cityInfoMapper.selectById(id);
-			final String nation = cityInfo.getNation();
-			list.add(nation);
-			final List<String> nations = this.countryMapper.findNationsByCnt(cityInfo.getContinent()).stream()
-					.filter(item -> StringUtils.isNotEqual(item, nation)).toList();
-			list.addAll(nations);
-			return list;
+			final List<String> nations = Lists.newArrayList();
+			final CityInfo cityInfo = this.cityInfoRepository.findById(id).orElseGet(CityInfo::new);
+			nations.add(cityInfo.getNation());
+			final List<String> list = this.countryRepository.findNationsByCnt(cityInfo.getContinent()).stream()
+					.filter(a -> StringUtils.isNotEqual(a, cityInfo.getNation())).toList();
+			nations.addAll(list);
+			return nations;
 		}
-		return this.countryMapper.findNationsByCnt(continentVal);
+		return this.countryRepository.findNationsByCnt(continentVal);
 	}
 
 	@Override
 	public CityDto getCityInfoById(final Integer id) {
-		final CityInfo cityInfo = this.cityInfoMapper.selectById(id);
+		final CityInfo cityInfo = this.cityInfoRepository.findById(id).orElseGet(CityInfo::new);
 		return new CityDto(cityInfo.getId(), cityInfo.getName(), cityInfo.getContinent(), cityInfo.getNation(),
 				cityInfo.getDistrict(), cityInfo.getPopulation(), cityInfo.getLanguage());
 	}
 
 	@Override
 	public Pagination<CityDto> getPageInfo(final Integer pageNum, final String keyword) {
-		int sort = SORT_NUMBER;
-		final int offset = PAGE_SIZE * (pageNum - 1);
+		// ページングコンストラクタを宣言する；
+		final PageRequest pageRequest = PageRequest.of(pageNum - 1, PAGE_SIZE, Sort.by(Direction.ASC, "id"));
 		// キーワードの属性を判断する；
 		if (StringUtils.isNotEmpty(keyword)) {
 			final String hankakuKeyword = StringUtils.toHankaku(keyword);
+			final int pageMin = PAGE_SIZE * (pageNum - 1);
+			final int pageMax = PAGE_SIZE * pageNum;
+			int sort = SORT_NUMBER;
 			if (hankakuKeyword.startsWith("min(pop)")) {
 				final int indexOf = hankakuKeyword.indexOf(")");
 				final String keisan = hankakuKeyword.substring(indexOf + 1);
@@ -114,16 +119,14 @@ public class ShubonnseiJpaLogicServiceImpl implements ShubonnseiJpaLogicService 
 					sort = Integer.parseInt(keisan);
 				}
 				// 人口数量昇順で最初の15個都市の情報を吹き出します；
-				final List<CityDto> minimumRanks = this.cityInfoMapper.findMinimumRanks(sort).stream()
+				final List<CityDto> minimumRanks = this.cityInfoRepository.findMinimumRanks(sort).stream()
 						.map(item -> new CityDto(item.getId(), item.getName(), item.getContinent(), item.getNation(),
 								item.getDistrict(), item.getPopulation(), item.getLanguage()))
 						.toList();
-				if ((offset + PAGE_SIZE) >= sort) {
-					return Pagination.of(minimumRanks.subList(offset, sort), minimumRanks.size(), pageNum, PAGE_SIZE,
-							NAVIGATION_PAGES);
+				if (pageMax >= sort) {
+					return Pagination.of(minimumRanks.subList(pageMin, sort), minimumRanks.size(), pageNum, PAGE_SIZE);
 				}
-				return Pagination.of(minimumRanks.subList(offset, offset + PAGE_SIZE), minimumRanks.size(), pageNum,
-						PAGE_SIZE, NAVIGATION_PAGES);
+				return Pagination.of(minimumRanks.subList(pageMin, pageMax), minimumRanks.size(), pageNum, PAGE_SIZE);
 			}
 			if (hankakuKeyword.startsWith("max(pop)")) {
 				final int indexOf = hankakuKeyword.indexOf(")");
@@ -132,80 +135,77 @@ public class ShubonnseiJpaLogicServiceImpl implements ShubonnseiJpaLogicService 
 					sort = Integer.parseInt(keisan);
 				}
 				// 人口数量降順で最初の15個都市の情報を吹き出します；
-				final List<CityDto> maximumRanks = this.cityInfoMapper.findMaximumRanks(sort).stream()
+				final List<CityDto> maximumRanks = this.cityInfoRepository.findMaximumRanks(sort).stream()
 						.map(item -> new CityDto(item.getId(), item.getName(), item.getContinent(), item.getNation(),
 								item.getDistrict(), item.getPopulation(), item.getLanguage()))
 						.toList();
-				if ((offset + PAGE_SIZE) >= sort) {
-					return Pagination.of(maximumRanks.subList(offset, sort), maximumRanks.size(), pageNum, PAGE_SIZE,
-							NAVIGATION_PAGES);
+				if (pageMax >= sort) {
+					return Pagination.of(maximumRanks.subList(pageMin, sort), maximumRanks.size(), pageNum, PAGE_SIZE);
 				}
-				return Pagination.of(maximumRanks.subList(offset, offset + PAGE_SIZE), maximumRanks.size(), pageNum,
-						PAGE_SIZE, NAVIGATION_PAGES);
+				return Pagination.of(maximumRanks.subList(pageMin, pageMax), maximumRanks.size(), pageNum, PAGE_SIZE);
 			}
 			// ページング検索；
-			final String nationCode = this.countryMapper.findNationCode(hankakuKeyword);
+			final CityInfo cityInfo = new CityInfo();
+			final String nationCode = this.countryRepository.findNationCode(hankakuKeyword);
 			if (StringUtils.isNotEmpty(nationCode)) {
-				final Integer cityInfosByNationCnt = this.cityInfoMapper.countCityInfosByNation(hankakuKeyword);
-				if (cityInfosByNationCnt == 0) {
-					return Pagination.of(Lists.newArrayList(), 0, pageNum);
-				}
-				final List<CityDto> cityInfosByNation = this.cityInfoMapper
-						.getCityInfosByNation(hankakuKeyword, offset, PAGE_SIZE).stream()
+				cityInfo.setNation(hankakuKeyword);
+				final Example<CityInfo> example = Example.of(cityInfo, ExampleMatcher.matching());
+				final Page<CityInfo> pages = this.cityInfoRepository.findAll(example, pageRequest);
+				final List<CityDto> list = pages.getContent().stream()
 						.map(item -> new CityDto(item.getId(), item.getName(), item.getContinent(), item.getNation(),
 								item.getDistrict(), item.getPopulation(), item.getLanguage()))
 						.toList();
-				return Pagination.of(cityInfosByNation, cityInfosByNationCnt, pageNum, PAGE_SIZE, NAVIGATION_PAGES);
+				return Pagination.of(list, pages.getTotalElements(), pageNum, PAGE_SIZE);
 			}
-			final Integer cityInfosByNameCnt = this.cityInfoMapper.countCityInfosByName(hankakuKeyword);
-			if (cityInfosByNameCnt == 0) {
-				return Pagination.of(Lists.newArrayList(), 0, pageNum);
-			}
-			final List<CityDto> cityInfosByName = this.cityInfoMapper
-					.getCityInfosByName(hankakuKeyword, offset, PAGE_SIZE).stream()
+			cityInfo.setName(hankakuKeyword);
+			final ExampleMatcher matcher = ExampleMatcher.matching().withMatcher("name",
+					GenericPropertyMatchers.contains());
+			final Example<CityInfo> example = Example.of(cityInfo, matcher);
+			final Page<CityInfo> pages = this.cityInfoRepository.findAll(example, pageRequest);
+			final List<CityDto> list = pages.getContent().stream()
 					.map(item -> new CityDto(item.getId(), item.getName(), item.getContinent(), item.getNation(),
 							item.getDistrict(), item.getPopulation(), item.getLanguage()))
 					.toList();
-			return Pagination.of(cityInfosByName, cityInfosByNameCnt, pageNum, PAGE_SIZE, NAVIGATION_PAGES);
-		}
-		final Integer cityInfosCnt = this.cityInfoMapper.countCityInfos();
-		if (cityInfosCnt == 0) {
-			return Pagination.of(Lists.newArrayList(), 0, pageNum);
+			return Pagination.of(list, pages.getTotalElements(), pageNum, PAGE_SIZE);
 		}
 		// ページング検索；
-		final List<CityDto> cityInfos = this.cityInfoMapper.getCityInfos(offset, PAGE_SIZE).stream()
-				.map(item -> new CityDto(item.getId(), item.getName(), item.getContinent(), item.getNation(),
-						item.getDistrict(), item.getPopulation(), item.getLanguage()))
+		final Page<CityInfo> pages = this.cityInfoRepository.findAll(pageRequest);
+		final List<CityDto> list = pages.getContent().stream().map(item -> new CityDto(item.getId(), item.getName(),
+				item.getContinent(), item.getNation(), item.getDistrict(), item.getPopulation(), item.getLanguage()))
 				.toList();
-		return Pagination.of(cityInfos, cityInfosCnt, pageNum, PAGE_SIZE, NAVIGATION_PAGES);
+		return Pagination.of(list, pages.getTotalElements(), pageNum, PAGE_SIZE);
 	}
 
 	@Override
 	public void removeById(final Integer id) {
-		this.cityMapper.removeById(id);
-		this.cityInfoMapper.refresh();
+		this.cityRepository.removeById(id);
+		this.cityInfoRepository.refresh();
 	}
 
 	@Override
 	public void save(final CityDto cityDto) {
+		final String countryCode = this.countryRepository.findNationCode(cityDto.nation());
+		final Integer saiban = this.cityRepository.saiban();
 		final City city = new City();
-		BeanUtils.copyProperties(cityDto, city, "continent", "nation", "language");
-		final Integer saiban = this.cityMapper.saiban();
-		final String countryCode = this.countryMapper.findNationCode(cityDto.nation());
 		city.setId(saiban);
+		city.setName(cityDto.name());
 		city.setCountryCode(countryCode);
+		city.setDistrict(cityDto.district());
+		city.setPopulation(cityDto.population());
 		city.setDeleteFlg(Messages.MSG007);
-		this.cityMapper.saveById(city);
-		this.cityInfoMapper.refresh();
+		this.cityRepository.save(city);
+		this.cityInfoRepository.refresh();
 	}
 
 	@Override
 	public void update(final CityDto cityDto) {
-		final City city = new City();
-		BeanUtils.copyProperties(cityDto, city, "continent", "nation", "language");
-		final String countryCode = this.countryMapper.findNationCode(cityDto.nation());
+		final City city = this.cityRepository.findById(cityDto.id()).orElseGet(City::new);
+		final String countryCode = this.countryRepository.findNationCode(cityDto.nation());
 		city.setCountryCode(countryCode);
-		this.cityMapper.updateById(city);
-		this.cityInfoMapper.refresh();
+		city.setName(cityDto.name());
+		city.setDistrict(cityDto.district());
+		city.setPopulation(cityDto.population());
+		this.cityRepository.save(city);
+		this.cityInfoRepository.refresh();
 	}
 }
