@@ -8,6 +8,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.IdClass;
 import jakarta.persistence.Table;
+import jp.co.shubonnsei.jpa.utils.LanguageId;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
